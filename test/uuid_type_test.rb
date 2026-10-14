@@ -34,8 +34,8 @@ class UuidTypeTest < Minitest::Test
     uuid = ActiveRecord::Uuid::Base36::Type.generate
     binary = @type.serialize(uuid)
 
-    assert_kind_of String, binary
-    assert_equal 16, binary.bytesize
+    assert_kind_of ActiveModel::Type::Binary::Data, binary
+    assert_equal 16, binary.to_s.bytesize
   end
 
   def test_cast_returns_value_unchanged
@@ -56,6 +56,48 @@ class UuidTypeTest < Minitest::Test
     result = ActiveRecord::Uuid::Base36::Type.normalize_base36(123)
 
     assert_equal 25, result.length
-    assert_equal "0000000000000000000003f", result
+    assert_equal "000000000000000000000003f", result
+  end
+
+  def test_serialize_accepts_uppercase_and_short_ids
+    canonical = ActiveRecord::Uuid::Base36::Type.generate
+
+    assert_equal @type.serialize(canonical), @type.serialize(canonical.upcase)
+    assert_equal @type.serialize("000000000000000000000003f"), @type.serialize("3f")
+  end
+
+  def test_serialize_accepts_maximum_128_bit_value
+    max_id = ActiveRecord::Uuid::Base36::Type.normalize_base36(2**128 - 1)
+
+    assert_equal "\xFF".b * 16, @type.serialize(max_id).to_s
+  end
+
+  def test_serialize_rejects_malformed_ids
+    ["", " abc", "abc ", "a_bc", "-1", "+1", "abc!junk", "abc\n", "a" * 26, "z" * 1_000_000].each do |value|
+      assert_nil @type.serialize(value), "expected #{value[0, 30].inspect} to be rejected"
+    end
+  end
+
+  def test_serialize_rejects_values_at_or_above_2_pow_128
+    assert_nil @type.serialize("z" * 25)
+    assert_nil @type.serialize((2**128).to_s(36))
+  end
+
+  def test_serialize_accepts_hyphenated_and_32_hex_uuids
+    uuid = SecureRandom.uuid
+    expected = [uuid.delete("-")].pack("H*")
+
+    assert_equal expected, @type.serialize(uuid).to_s
+    assert_equal expected, @type.serialize(uuid.upcase).to_s
+    assert_equal expected, @type.serialize(uuid.delete("-")).to_s
+    assert_equal uuid.delete("-").to_i(16).to_s(36).rjust(25, "0"), @type.deserialize(@type.serialize(uuid))
+  end
+
+  def test_serialize_rejects_malformed_uuids
+    uuid = SecureRandom.uuid
+
+    [uuid.sub("-", ""), uuid.tr("-", "_"), " #{uuid}", "#{uuid}\n", "#{uuid}x", uuid[1..], uuid.tr("0-9a-f", "g")].each do |value|
+      assert_nil @type.serialize(value)
+    end
   end
 end
