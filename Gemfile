@@ -9,6 +9,6 @@ gem "rake", "~> 13.0"
 
 gem "minitest", "~> 5.0"
 
-gem "sqlite3", "~> 1.4"
+gem "sqlite3", ">= 2.1"
 
 gem "trilogy", "~> 2.0"
