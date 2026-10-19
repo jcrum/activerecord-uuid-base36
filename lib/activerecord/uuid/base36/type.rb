@@ -49,7 +49,19 @@ module ActiveRecord
           self.class.normalize_base36(hex.to_i(16))
         end
 
+        CANONICAL_FORMAT = /\A[0-9a-z]{#{BASE36_LENGTH}}\z/i unless defined?(CANONICAL_FORMAT)
+
+        # Canonicalizes RFC/hyphenated UUIDs, 32-hex UUIDs and 25-char base36 to lowercase 25-char
+        # base36. Short (1-24 char) base36 and everything else is returned unchanged, so callers
+        # validating an assigned value still see malformed input; serialize pads short ids for lookups.
         def cast(value)
+          return value unless value.is_a?(String)
+
+          if HEX_UUID_FORMAT.match?(value) || CANONICAL_FORMAT.match?(value)
+            hex_string = hex(value)
+            return self.class.normalize_base36(hex_string.to_i(16)) if hex_string
+          end
+
           value
         end
       end

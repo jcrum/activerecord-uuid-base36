@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `Type#cast` canonicalizes RFC/hyphenated UUIDs, 32-hex UUIDs and 25-char base36 to lowercase 25-char
+  base36, so a freshly assigned RFC id reads back in canonical form before reload. Short (1-24 char)
+  base36 and invalid input are returned unchanged (`serialize` still pads short ids for lookups).
+  Models that validate an id's format should validate `<attr>_before_type_cast` when
+  `<attr>_came_from_user?`, because the cast value no longer shows what the caller submitted.
+
 ## [0.1.0] - 2024-01-01
 
 ### Added

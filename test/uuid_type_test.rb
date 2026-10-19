@@ -44,6 +44,22 @@ class UuidTypeTest < Minitest::Test
     assert_equal uuid, @type.cast(uuid)
   end
 
+  def test_cast_canonicalizes_rfc_hex_and_25_char_base36
+    base36 = ActiveRecord::Uuid::Base36::Type.generate
+    rfc = @type.hex(base36).then { |h| [h[0, 8], h[8, 4], h[12, 4], h[16, 4], h[20, 12]].join("-") }
+
+    assert_equal base36, @type.cast(rfc)
+    assert_equal base36, @type.cast(rfc.upcase)
+    assert_equal base36, @type.cast(rfc.delete("-"))
+    assert_equal base36, @type.cast(base36.upcase)
+    assert_equal base36, @type.cast(base36)
+  end
+
+  def test_cast_leaves_short_base36_and_invalid_input_unchanged
+    ["", "1", "bad", "Z", "not a uuid!", "z" * 25, "z" * 26, 12, :sym].each { |v| assert_equal v, @type.cast(v) }
+    assert_nil @type.cast(nil)
+  end
+
   def test_serialize_nil_returns_nil
     assert_nil @type.serialize(nil)
   end
