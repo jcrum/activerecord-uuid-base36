@@ -21,19 +21,14 @@ module ActiveRecord
 end
 
 # Register the UUID type for Trilogy (MySQL) and SQLite3 adapters
-begin
-  registered = ActiveRecord::Type.lookup(:uuid, adapter: :trilogy).is_a?(ActiveRecord::Uuid::Base36::Type)
-rescue ArgumentError
-  registered = false
+[:trilogy, :sqlite3].each do |adapter|
+  begin
+    registered = ActiveRecord::Type.lookup(:uuid, adapter: adapter).is_a?(ActiveRecord::Uuid::Base36::Type)
+  rescue ArgumentError
+    registered = false
+  end
+  ActiveRecord::Type.register(:uuid, ActiveRecord::Uuid::Base36::Type, adapter: adapter) unless registered
 end
-ActiveRecord::Type.register(:uuid, ActiveRecord::Uuid::Base36::Type, adapter: :trilogy) unless registered
-
-begin
-  registered = ActiveRecord::Type.lookup(:uuid, adapter: :sqlite3).is_a?(ActiveRecord::Uuid::Base36::Type)
-rescue ArgumentError
-  registered = false
-end
-ActiveRecord::Type.register(:uuid, ActiveRecord::Uuid::Base36::Type, adapter: :sqlite3) unless registered
 
 # Hook into ActiveRecord to install our extensions
 ActiveSupport.on_load(:active_record) do
